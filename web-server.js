@@ -33,9 +33,19 @@ app.post('/login', async (req, res) => {
   
   try {
     const accessCode = await generateAccessCode(jid);
-    res.render('verify-code', { whatsapp: formattedWhatsapp, accessCode });
+    
+    // Enviar código via WhatsApp (usando a instância do bot)
+    const { sendCodeViaWhatsApp } = require('./index');
+    await sendCodeViaWhatsApp(jid, accessCode);
+    
+    res.render('verify-code', { 
+      whatsapp: formattedWhatsapp, 
+      accessCode: null,
+      success: 'Código enviado para seu WhatsApp!' 
+    });
   } catch (error) {
-    res.render('login', { error: 'Erro ao gerar código de acesso' });
+    console.error('Erro ao gerar/enviar código:', error);
+    res.render('login', { error: 'Erro ao enviar código. Tente novamente.' });
   }
 });
 

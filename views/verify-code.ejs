@@ -12,11 +12,11 @@
         <div class="login-box">
             <h1>🔐 Código de Acesso</h1>
             
-            <% if (accessCode) { %>
+            <% if (typeof success !== 'undefined') { %>
                 <div class="success">
-                    <h2>Seu código de acesso é:</h2>
-                    <div class="access-code"><%= accessCode %></div>
-                    <p><small>Este código expira em 10 minutos</small></p>
+                    <h2>✅ <%= success %></h2>
+                    <p>Verifique seu WhatsApp e digite o código recebido abaixo.</p>
+                    <p><small>O código expira em 10 minutos</small></p>
                 </div>
             <% } %>
             

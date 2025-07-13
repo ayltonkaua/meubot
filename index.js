@@ -16,6 +16,23 @@ const { generateAccessCode } = require("./auth-service");
 let botSocket = null; // Variável para guardar a instância ativa do socket
 const processedMessages = new Set();
 
+// Função para enviar código via WhatsApp (exportada para uso no web-server)
+async function sendCodeViaWhatsApp(jid, code) {
+  if (!botSocket) {
+    throw new Error('Bot do WhatsApp não está conectado');
+  }
+  
+  try {
+    await botSocket.sendMessage(jid, {
+      text: `🔐 *Código de Acesso ao Sistema Web*\n\nSeu código: *${code}*\n\n⏰ Este código expira em 10 minutos.\n\n💻 Digite este código no site para acessar seus registros.`,
+    });
+    console.log(`✅ Código ${code} enviado via WhatsApp para ${jid}`);
+  } catch (error) {
+    console.error('❌ Erro ao enviar código via WhatsApp:', error);
+    throw error;
+  }
+}
+
 // Garante que a pasta 'auth' exista
 if (!fs.existsSync("./auth")) {
   fs.mkdirSync("./auth");
@@ -153,6 +170,9 @@ async function connectToWhatsApp() {
     });
   });
 }
+
+// Exportar função para uso no web-server
+module.exports = { sendCodeViaWhatsApp };
 
 // Inicia o servidor web
 require('./web-server');

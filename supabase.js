@@ -36,7 +36,7 @@ async function getGastosByUser(userJid) {
     .from("gastos")
     .select("*")
     .eq("usuario_id", userJid)
-    .order("created_at", { ascending: false });
+    .order("data_criacao", { ascending: false });
 
   if (error) {
     console.error("❌ Erro ao buscar gastos:", error.message);
@@ -76,7 +76,7 @@ async function getGastosStats(userJid) {
     categorias[gasto.categoria].count++;
     
     // Estatísticas por mês
-    const mes = new Date(gasto.created_at).toLocaleDateString('pt-BR', { 
+    const mes = new Date(gasto.data_criacao).toLocaleDateString('pt-BR', { 
       year: 'numeric', 
       month: 'long' 
     });
