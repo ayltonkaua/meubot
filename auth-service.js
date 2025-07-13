@@ -44,22 +44,31 @@ function generateAccessCode(userJid) {
 }
 
 function verifyAccessCode(userJid, inputCode) {
+  console.log(`🔍 Verificando código no auth-service:`);
+  console.log(`   JID: ${userJid}`);
+  console.log(`   Código digitado: ${inputCode}`);
+  
   const stored = accessCodes.get(userJid);
+  console.log(`   Código armazenado:`, stored);
   
   if (!stored) {
+    console.log(`   ❌ Nenhum código encontrado para este JID`);
     return false;
   }
   
   if (Date.now() > stored.expires) {
+    console.log(`   ❌ Código expirado`);
     accessCodes.delete(userJid);
     return false;
   }
   
   if (stored.code === inputCode) {
+    console.log(`   ✅ Código válido!`);
     accessCodes.delete(userJid);
     return true;
   }
   
+  console.log(`   ❌ Código não confere`);
   return false;
 }
 

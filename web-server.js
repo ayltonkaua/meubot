@@ -32,10 +32,14 @@ app.post('/login', async (req, res) => {
   const jid = `${formattedWhatsapp}@s.whatsapp.net`;
   
   try {
+    console.log(`🔄 Gerando código para JID: ${jid}`);
     const accessCode = generateAccessCode(jid);
+    console.log(`🔑 Código gerado: ${accessCode}`);
     
     // Enviar código via WhatsApp
+    console.log(`📤 Tentando enviar código via WhatsApp...`);
     await sendCodeViaWhatsApp(jid, accessCode);
+    console.log(`✅ Código enviado com sucesso`);
     
     res.render('verify-code', { 
       whatsapp: formattedWhatsapp, 
@@ -43,7 +47,7 @@ app.post('/login', async (req, res) => {
       success: 'Código enviado para seu WhatsApp!' 
     });
   } catch (error) {
-    console.error('Erro ao gerar/enviar código:', error);
+    console.error('❌ Erro completo:', error);
     res.render('login', { error: 'Erro ao enviar código. Tente novamente.' });
   }
 });
@@ -53,12 +57,17 @@ app.post('/verify', async (req, res) => {
   const { whatsapp, code } = req.body;
   const jid = `${whatsapp}@s.whatsapp.net`;
   
+  console.log(`🔍 Verificando código: ${code} para JID: ${jid}`);
+  
   try {
     const isValid = verifyAccessCode(jid, code);
+    console.log(`✅ Código válido: ${isValid}`);
     
     if (isValid) {
+      console.log(`🚀 Redirecionando para dashboard`);
       res.redirect(`/dashboard?user=${encodeURIComponent(jid)}`);
     } else {
+      console.log(`❌ Código inválido ou expirado`);
       res.render('verify-code', { 
         whatsapp, 
         error: 'Código inválido ou expirado',
@@ -66,7 +75,7 @@ app.post('/verify', async (req, res) => {
       });
     }
   } catch (error) {
-    console.error('Erro ao verificar código:', error);
+    console.error('❌ Erro ao verificar código:', error);
     res.render('verify-code', { 
       whatsapp, 
       error: 'Erro ao verificar código',
