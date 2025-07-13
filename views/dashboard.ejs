@@ -1,0 +1,133 @@
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - WhatsApp Gastos</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="dashboard">
+        <header class="dashboard-header">
+            <h1>💰 Meus Gastos</h1>
+            <p>WhatsApp: <%= whatsapp %></p>
+            <a href="/" class="logout-btn">Sair</a>
+        </header>
+
+        <% if (typeof error !== 'undefined') { %>
+            <div class="error"><%= error %></div>
+        <% } %>
+
+        <% if (stats) { %>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Total Gasto</h3>
+                <div class="stat-value">R$ <%= stats.total %></div>
+            </div>
+            <div class="stat-card">
+                <h3>Total de Registros</h3>
+                <div class="stat-value"><%= stats.totalGastos %></div>
+            </div>
+            <div class="stat-card">
+                <h3>Média por Gasto</h3>
+                <div class="stat-value">R$ <%= stats.mediaGasto %></div>
+            </div>
+            <div class="stat-card">
+                <h3>Maior Gasto</h3>
+                <div class="stat-value">R$ <%= stats.maiorGasto %></div>
+            </div>
+        </div>
+
+        <div class="charts-grid">
+            <div class="chart-container">
+                <h3>Gastos por Categoria</h3>
+                <canvas id="categoriesChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3>Gastos por Mês</h3>
+                <canvas id="monthlyChart"></canvas>
+            </div>
+        </div>
+        <% } %>
+
+        <div class="table-container">
+            <h3>Histórico de Gastos</h3>
+            <% if (gastos.length === 0) { %>
+                <p class="no-data">Nenhum gasto registrado ainda.</p>
+            <% } else { %>
+                <table class="gastos-table">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Valor</th>
+                            <th>Categoria</th>
+                            <th>Descrição</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% gastos.forEach(gasto => { %>
+                        <tr>
+                            <td><%= new Date(gasto.created_at).toLocaleDateString('pt-BR') %></td>
+                            <td class="valor">R$ <%= parseFloat(gasto.valor).toFixed(2) %></td>
+                            <td><span class="categoria <%= gasto.categoria %>"><%= gasto.categoria %></span></td>
+                            <td><%= gasto.descricao %></td>
+                        </tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+            <% } %>
+        </div>
+    </div>
+
+    <script>
+        <% if (stats && Object.keys(stats.categorias).length > 0) { %>
+        // Gráfico de categorias
+        const ctxCategories = document.getElementById('categoriesChart').getContext('2d');
+        new Chart(ctxCategories, {
+            type: 'doughnut',
+            data: {
+                labels: <%= JSON.stringify(Object.keys(stats.categorias)) %>,
+                datasets: [{
+                    data: <%= JSON.stringify(Object.values(stats.categorias).map(c => c.total)) %>,
+                    backgroundColor: [
+                        '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+
+        // Gráfico mensal
+        const ctxMonthly = document.getElementById('monthlyChart').getContext('2d');
+        new Chart(ctxMonthly, {
+            type: 'bar',
+            data: {
+                labels: <%= JSON.stringify(Object.keys(stats.gastosPorMes)) %>,
+                datasets: [{
+                    label: 'Gastos (R$)',
+                    data: <%= JSON.stringify(Object.values(stats.gastosPorMes)) %>,
+                    backgroundColor: '#36A2EB'
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+        <% } %>
+    </script>
+</body>
+</html>

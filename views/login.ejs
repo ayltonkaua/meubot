@@ -1,0 +1,32 @@
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Gastos - Login</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="login-box">
+            <h1>💰 WhatsApp Gastos</h1>
+            <p>Digite seu número do WhatsApp para acessar seus registros</p>
+            
+            <% if (typeof error !== 'undefined') { %>
+                <div class="error"><%= error %></div>
+            <% } %>
+            
+            <form action="/login" method="POST">
+                <div class="input-group">
+                    <label for="whatsapp">Número do WhatsApp:</label>
+                    <input type="tel" id="whatsapp" name="whatsapp" placeholder="5581999999999" required>
+                    <small>Digite apenas números (ex: 5581999999999)</small>
+                </div>
+                
+                <button type="submit">Gerar Código de Acesso</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

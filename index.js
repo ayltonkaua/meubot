@@ -11,6 +11,7 @@ const fs = require("fs");
 require("dotenv").config();
 const { saveGasto } = require("./supabase");
 const { detectarCategoria } = require("./classificador");
+const { generateAccessCode } = require("./auth-service");
 
 // --- CONTROLE DE INSTÂNCIA E MENSAGENS ---
 let botSocket = null; // Variável para guardar a instância ativa do socket
@@ -121,12 +122,32 @@ async function connectToWhatsApp() {
 
     console.log(`📩 Processando: "${text}" de ${sender}`);
 
+    // Comando para gerar código de acesso ao sistema web
+    if (text.includes("/codigo") || text.includes("/acesso") || text.includes("/web")) {
+      const accessCode = generateAccessCode(sender);
+      await botSocket.sendMessage(sender, {
+        text: `🔐 *Código de Acesso ao Sistema Web*\n\nSeu código: *${accessCode}*\n\nAcesse: https://seu-repl.replit.app\n\n⏰ Este código expira em 10 minutos.`,
+      });
+      return;
+    }
+
+    // Comando para relatório
+    if (text.includes("/relatorio") || text.includes("/resumo")) {
+      await botSocket.sendMessage(sender, {
+        text: `📊 *Acesse seu relatório completo*\n\nPara ver gráficos e estatísticas detalhadas, digite: */codigo*\n\nOu acesse diretamente: https://seu-repl.replit.app`,
+      });
+      return;
+    }
+
     const valorMatch = text.match(/(\d+[\.,]?\d*)/);
     const valor = valorMatch ? parseFloat(valorMatch[0].replace(",", ".")) : null;
     const categoria = detectarCategoria(text);
 
     if (!valor || !categoria) {
       console.log("⚠️ Não foi possível identificar um valor e uma categoria.");
+      await botSocket.sendMessage(sender, {
+        text: `❓ *Como usar o bot:*\n\n• Digite o valor e descrição do gasto\nEx: "Gastei 15 no almoço"\n\n• Para ver relatórios: */codigo*\n• Para resumo: */relatorio*`,
+      });
       return;
     }
 
@@ -140,10 +161,13 @@ async function connectToWhatsApp() {
     await saveGasto(gastoParaSalvar);
 
     await botSocket.sendMessage(sender, {
-      text: `✅ R$ ${valor.toFixed(2)} em "${categoria}" registrado com sucesso!`,
+      text: `✅ *Gasto Registrado!*\n\n💰 Valor: R$ ${valor.toFixed(2)}\n📂 Categoria: ${categoria}\n\n📊 Para ver relatórios: */codigo*`,
     });
   });
 }
+
+// Inicia o servidor web
+require('./web-server');
 
 // Inicia o bot pela primeira vez
 connectToWhatsApp();

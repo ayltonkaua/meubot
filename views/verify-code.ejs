@@ -1,0 +1,42 @@
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verificar Código - WhatsApp Gastos</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="login-box">
+            <h1>🔐 Código de Acesso</h1>
+            
+            <% if (accessCode) { %>
+                <div class="success">
+                    <h2>Seu código de acesso é:</h2>
+                    <div class="access-code"><%= accessCode %></div>
+                    <p><small>Este código expira em 10 minutos</small></p>
+                </div>
+            <% } %>
+            
+            <% if (typeof error !== 'undefined') { %>
+                <div class="error"><%= error %></div>
+            <% } %>
+            
+            <form action="/verify" method="POST">
+                <input type="hidden" name="whatsapp" value="<%= whatsapp %>">
+                
+                <div class="input-group">
+                    <label for="code">Digite o código:</label>
+                    <input type="text" id="code" name="code" placeholder="123456" maxlength="6" required>
+                </div>
+                
+                <button type="submit">Acessar Dashboard</button>
+            </form>
+            
+            <a href="/" class="back-link">← Voltar ao login</a>
+        </div>
+    </div>
+</body>
+</html>
