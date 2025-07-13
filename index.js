@@ -72,14 +72,27 @@ async function connectToWhatsApp() {
     } else if (connection === "open") {
       console.log("✅ Conexão estabelecida com o WhatsApp!");
       console.log(`👤 Usuário conectado: ${botSocket.user?.name || 'Desconhecido'}`);
+      console.log(`📱 Número do bot: ${botSocket.user?.id || 'N/A'}`);
       
       // Define o socket no auth-service para envio de códigos
       setBotSocket(botSocket);
       
-      // Aguarda um pouco para garantir que tudo esteja pronto
-      setTimeout(() => {
+      // Aguarda mais tempo para garantir que tudo esteja completamente pronto
+      setTimeout(async () => {
         console.log("🔧 Socket configurado e pronto para envio de códigos");
-      }, 2000);
+        
+        // Teste de conectividade
+        try {
+          console.log("🔍 Testando conectividade do bot...");
+          // Envia uma mensagem de teste para si mesmo
+          await botSocket.sendMessage(botSocket.user.id, {
+            text: "🤖 Bot online e pronto para enviar códigos!"
+          });
+          console.log("✅ Teste de conectividade realizado com sucesso");
+        } catch (testError) {
+          console.error("⚠️ Aviso: Possível problema de conectividade:", testError.message);
+        }
+      }, 5000);
     }
   });
 

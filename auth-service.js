@@ -31,11 +31,45 @@ async function sendCodeViaWhatsApp(jid, code) {
   
   try {
     console.log(`🚀 Enviando mensagem...`);
-    await botSocket.sendMessage(jid, {
-      text: `🔐 *Código de Acesso ao Sistema Web*\n\nSeu código: *${code}*\n\n⏰ Este código expira em 10 minutos.\n\n💻 Digite este código no site para acessar seus registros.`,
-    });
-    console.log(`✅ Código ${code} enviado via WhatsApp para ${jid}`);
-    return true;
+    
+    // Verificar se o JID existe nos contatos do bot
+    const exists = await botSocket.onWhatsApp(jid);
+    console.log(`📱 Verificação do número: ${exists.length > 0 ? 'Número válido' : 'Número não encontrado'}`);
+    
+    if (exists.length === 0) {
+      console.error(`❌ Número ${jid} não encontrado no WhatsApp`);
+      throw new Error('Número não encontrado no WhatsApp');
+    }
+    
+    // Tentar enviar a mensagem com retry
+    let attempts = 0;
+    const maxAttempts = 3;
+    
+    while (attempts < maxAttempts) {
+      try {
+        attempts++;
+        console.log(`🔄 Tentativa ${attempts}/${maxAttempts} de envio...`);
+        
+        const result = await botSocket.sendMessage(jid, {
+          text: `🔐 *Código de Acesso ao Sistema Web*\n\nSeu código: *${code}*\n\n⏰ Este código expira em 10 minutos.\n\n💻 Digite este código no site para acessar seus registros.`,
+        });
+        
+        console.log(`✅ Mensagem enviada com sucesso:`, result.key.id);
+        console.log(`✅ Código ${code} enviado via WhatsApp para ${jid}`);
+        return true;
+        
+      } catch (sendError) {
+        console.error(`❌ Erro na tentativa ${attempts}:`, sendError.message);
+        
+        if (attempts < maxAttempts) {
+          console.log(`⏳ Aguardando 2 segundos antes da próxima tentativa...`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        } else {
+          throw sendError;
+        }
+      }
+    }
+    
   } catch (error) {
     console.error('❌ Erro detalhado ao enviar código:', error);
     throw error;
