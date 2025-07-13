@@ -1,3 +1,4 @@
+const express = require('express'); // <-- ADICIONADO
 const makeWASocket = require("@whiskeysockets/baileys").default;
 const {
   useMultiFileAuthState,
@@ -20,13 +21,27 @@ if (!fs.existsSync("./auth")) {
   fs.mkdirSync("./auth");
 }
 
+// --- INÍCIO DA MODIFICAÇÃO: SERVIDOR WEB ---
+const app = express();
+const port = process.env.PORT || 3000;
+
+app.get('/', (req, res) => {
+  res.send('Bot de gestão de gastos está ativo! ✅');
+});
+
+app.listen(port, () => {
+  console.log(`✅ Servidor web rodando na porta ${port}. Pronto para pings.`);
+});
+// --- FIM DA MODIFICAÇÃO: SERVIDOR WEB ---
+
+
 async function connectToWhatsApp() {
   // Se já existe uma instância do socket, encerra ela completamente antes de criar uma nova
   if (botSocket) {
     console.log("🔌 Encerrando conexão antiga...");
     try {
       // Envia um evento de encerramento para a instância antiga
-      botSocket.end(new Error("Reconectando...")); 
+      botSocket.end(new Error("Reconectando..."));
     } catch (error) {
       console.log("⚠️ Erro ao encerrar a conexão antiga, mas prosseguindo.");
     }
