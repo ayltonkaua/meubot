@@ -13,18 +13,31 @@ function setBotSocket(socket) {
 }
 
 async function sendCodeViaWhatsApp(jid, code) {
+  console.log(`📤 Tentando enviar código via WhatsApp...`);
+  console.log(`   Socket disponível: ${!!botSocket}`);
+  console.log(`   JID: ${jid}`);
+  console.log(`   Código: ${code}`);
+  
   if (!botSocket) {
+    console.error('❌ Bot do WhatsApp não está conectado');
     throw new Error('Bot do WhatsApp não está conectado');
   }
   
+  // Verificar se o socket está conectado
+  if (!botSocket.user) {
+    console.error('❌ Socket não está autenticado');
+    throw new Error('Socket não está autenticado');
+  }
+  
   try {
+    console.log(`🚀 Enviando mensagem...`);
     await botSocket.sendMessage(jid, {
       text: `🔐 *Código de Acesso ao Sistema Web*\n\nSeu código: *${code}*\n\n⏰ Este código expira em 10 minutos.\n\n💻 Digite este código no site para acessar seus registros.`,
     });
     console.log(`✅ Código ${code} enviado via WhatsApp para ${jid}`);
     return true;
   } catch (error) {
-    console.error('❌ Erro ao enviar código via WhatsApp:', error);
+    console.error('❌ Erro detalhado ao enviar código:', error);
     throw error;
   }
 }

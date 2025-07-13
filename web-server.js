@@ -38,6 +38,10 @@ app.post('/login', async (req, res) => {
     
     // Enviar código via WhatsApp
     console.log(`📤 Tentando enviar código via WhatsApp...`);
+    
+    // Aguarda um pouco para garantir que o socket esteja pronto
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
     await sendCodeViaWhatsApp(jid, accessCode);
     console.log(`✅ Código enviado com sucesso`);
     

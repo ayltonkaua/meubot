@@ -71,8 +71,15 @@ async function connectToWhatsApp() {
       }
     } else if (connection === "open") {
       console.log("✅ Conexão estabelecida com o WhatsApp!");
+      console.log(`👤 Usuário conectado: ${botSocket.user?.name || 'Desconhecido'}`);
+      
       // Define o socket no auth-service para envio de códigos
       setBotSocket(botSocket);
+      
+      // Aguarda um pouco para garantir que tudo esteja pronto
+      setTimeout(() => {
+        console.log("🔧 Socket configurado e pronto para envio de códigos");
+      }, 2000);
     }
   });
 
