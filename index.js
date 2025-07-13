@@ -76,6 +76,12 @@ async function connectToWhatsApp() {
     const msg = messages[0];
     if (!msg.message || !msg.key.id) return;
 
+    // Ignora mensagens enviadas pelo próprio bot
+    if (msg.key.fromMe) {
+      console.log("🤖 Ignorando mensagem enviada pelo próprio bot");
+      return;
+    }
+
     const messageId = msg.key.id;
     if (processedMessages.has(messageId)) {
       console.log(`🚫 Mensagem duplicada ignorada: ${messageId}`);
