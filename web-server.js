@@ -1,7 +1,7 @@
 
 const express = require('express');
 const path = require('path');
-const { generateAccessCode, verifyAccessCode } = require('./auth-service');
+const { generateAccessCode, verifyAccessCode, sendCodeViaWhatsApp } = require('./auth-service');
 const { getGastosByUser, getGastosStats } = require('./supabase');
 
 const app = express();
@@ -32,10 +32,9 @@ app.post('/login', async (req, res) => {
   const jid = `${formattedWhatsapp}@s.whatsapp.net`;
   
   try {
-    const accessCode = await generateAccessCode(jid);
+    const accessCode = generateAccessCode(jid);
     
-    // Enviar código via WhatsApp (usando a instância do bot)
-    const { sendCodeViaWhatsApp } = require('./index');
+    // Enviar código via WhatsApp
     await sendCodeViaWhatsApp(jid, accessCode);
     
     res.render('verify-code', { 
@@ -55,7 +54,7 @@ app.post('/verify', async (req, res) => {
   const jid = `${whatsapp}@s.whatsapp.net`;
   
   try {
-    const isValid = await verifyAccessCode(jid, code);
+    const isValid = verifyAccessCode(jid, code);
     
     if (isValid) {
       res.redirect(`/dashboard?user=${encodeURIComponent(jid)}`);
@@ -67,6 +66,7 @@ app.post('/verify', async (req, res) => {
       });
     }
   } catch (error) {
+    console.error('Erro ao verificar código:', error);
     res.render('verify-code', { 
       whatsapp, 
       error: 'Erro ao verificar código',
