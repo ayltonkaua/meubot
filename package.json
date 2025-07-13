@@ -10,6 +10,12 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@types/node": "^22.13.11"
+    "@hapi/boom": "^10.0.1",
+    "@supabase/supabase-js": "^2.50.5",
+    "@types/node": "^22.13.11",
+    "@whiskeysockets/baileys": "^6.7.18",
+    "dotenv": "^17.2.0",
+    "express": "^5.1.0",
+    "pino": "^9.7.0"
   }
 }
