@@ -1,4 +1,3 @@
-const express = require('express'); // <-- ADICIONADO
 const makeWASocket = require("@whiskeysockets/baileys").default;
 const {
   useMultiFileAuthState,
@@ -21,19 +20,6 @@ const processedMessages = new Set();
 if (!fs.existsSync("./auth")) {
   fs.mkdirSync("./auth");
 }
-
-// --- INÍCIO DA MODIFICAÇÃO: SERVIDOR WEB ---
-const app = express();
-const port = process.env.PORT || 3000;
-
-app.get('/', (req, res) => {
-  res.send('Bot de gestão de gastos está ativo! ✅');
-});
-
-app.listen(port, () => {
-  console.log(`✅ Servidor web rodando na porta ${port}. Pronto para pings.`);
-});
-// --- FIM DA MODIFICAÇÃO: SERVIDOR WEB ---
 
 
 async function connectToWhatsApp() {
@@ -125,16 +111,18 @@ async function connectToWhatsApp() {
     // Comando para gerar código de acesso ao sistema web
     if (text.includes("/codigo") || text.includes("/acesso") || text.includes("/web")) {
       const accessCode = generateAccessCode(sender);
+      const webUrl = `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.app:5000`;
       await botSocket.sendMessage(sender, {
-        text: `🔐 *Código de Acesso ao Sistema Web*\n\nSeu código: *${accessCode}*\n\nAcesse: https://seu-repl.replit.app\n\n⏰ Este código expira em 10 minutos.`,
+        text: `🔐 *Código de Acesso ao Sistema Web*\n\nSeu código: *${accessCode}*\n\nAcesse: ${webUrl}\n\n⏰ Este código expira em 10 minutos.`,
       });
       return;
     }
 
     // Comando para relatório
     if (text.includes("/relatorio") || text.includes("/resumo")) {
+      const webUrl = `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.app:5000`;
       await botSocket.sendMessage(sender, {
-        text: `📊 *Acesse seu relatório completo*\n\nPara ver gráficos e estatísticas detalhadas, digite: */codigo*\n\nOu acesse diretamente: https://seu-repl.replit.app`,
+        text: `📊 *Acesse seu relatório completo*\n\nPara ver gráficos e estatísticas detalhadas, digite: */codigo*\n\nOu acesse diretamente: ${webUrl}`,
       });
       return;
     }

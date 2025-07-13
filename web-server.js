@@ -108,4 +108,5 @@ app.get('/api/chart-data', async (req, res) => {
 
 app.listen(port, '0.0.0.0', () => {
   console.log(`🌐 Servidor web rodando na porta ${port}`);
+  console.log(`🔗 Acesse: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.app:5000`);
 });
