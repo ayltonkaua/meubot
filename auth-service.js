@@ -15,8 +15,7 @@ function setBotSocket(socket) {
 async function sendCodeViaWhatsApp(jid, code) {
   console.log(`📤 Tentando enviar código via WhatsApp...`);
   console.log(`   Socket disponível: ${!!botSocket}`);
-  console.log(`   JID completo: ${jid}`);
-  console.log(`   Número extraído: ${jid.replace('@s.whatsapp.net', '')}`);
+  console.log(`   JID: ${jid}`);
   console.log(`   Código: ${code}`);
   
   if (!botSocket) {

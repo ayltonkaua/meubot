@@ -28,23 +28,7 @@ app.post('/login', async (req, res) => {
   }
   
   // Formatar número do WhatsApp
-  let formattedWhatsapp = whatsapp.replace(/\D/g, '');
-  
-  // Verificar se é número brasileiro (código 55) com 13 dígitos
-  if (formattedWhatsapp.startsWith('55') && formattedWhatsapp.length === 13) {
-    // Número brasileiro correto: 5581996200651
-    // Manter como está
-    console.log(`📱 Número brasileiro detectado: ${formattedWhatsapp}`);
-  } else if (formattedWhatsapp.startsWith('55') && formattedWhatsapp.length === 12) {
-    // Número brasileiro sem o 9: 5581196200651 -> 5581996200651
-    // Adicionar o 9 após o DDD
-    const codigoPais = formattedWhatsapp.substring(0, 2); // 55
-    const ddd = formattedWhatsapp.substring(2, 4); // 81
-    const numero = formattedWhatsapp.substring(4); // 96200651
-    formattedWhatsapp = codigoPais + ddd + '9' + numero;
-    console.log(`📱 Número brasileiro corrigido: ${formattedWhatsapp}`);
-  }
-  
+  const formattedWhatsapp = whatsapp.replace(/\D/g, '');
   const jid = `${formattedWhatsapp}@s.whatsapp.net`;
   
   try {
@@ -75,22 +59,7 @@ app.post('/login', async (req, res) => {
 // Verificar código
 app.post('/verify', async (req, res) => {
   const { whatsapp, code } = req.body;
-  
-  // Aplicar a mesma formatação usada no login
-  let formattedWhatsapp = whatsapp.replace(/\D/g, '');
-  
-  // Verificar se é número brasileiro (código 55) com 13 dígitos
-  if (formattedWhatsapp.startsWith('55') && formattedWhatsapp.length === 13) {
-    console.log(`📱 Número brasileiro detectado na verificação: ${formattedWhatsapp}`);
-  } else if (formattedWhatsapp.startsWith('55') && formattedWhatsapp.length === 12) {
-    const codigoPais = formattedWhatsapp.substring(0, 2);
-    const ddd = formattedWhatsapp.substring(2, 4);
-    const numero = formattedWhatsapp.substring(4);
-    formattedWhatsapp = codigoPais + ddd + '9' + numero;
-    console.log(`📱 Número brasileiro corrigido na verificação: ${formattedWhatsapp}`);
-  }
-  
-  const jid = `${formattedWhatsapp}@s.whatsapp.net`;
+  const jid = `${whatsapp}@s.whatsapp.net`;
   
   console.log(`🔍 Verificando código: ${code} para JID: ${jid}`);
   
