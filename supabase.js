@@ -36,7 +36,7 @@ async function getGastosByUser(userJid) {
     .from("gastos")
     .select("*")
     .eq("usuario_id", userJid)
-    .order("data_criacao", { ascending: false });
+    .order("criado_em", { ascending: false }); // Alterado para 'criado_em' conforme sua tabela gastos
 
   if (error) {
     console.error("❌ Erro ao buscar gastos:", error.message);
@@ -76,7 +76,7 @@ async function getGastosStats(userJid) {
     categorias[gasto.categoria].count++;
     
     // Estatísticas por mês
-    const mes = new Date(gasto.data_criacao).toLocaleDateString('pt-BR', { 
+    const mes = new Date(gasto.criado_em).toLocaleDateString('pt-BR', { // Alterado para 'criado_em'
       year: 'numeric', 
       month: 'long' 
     });
@@ -99,5 +99,51 @@ async function getGastosStats(userJid) {
   };
 }
 
+/**
+ * Encontra um usuário pelo JID do WhatsApp ou o cria se não existir.
+ * @param {string} whatsappJid - O JID do WhatsApp do usuário.
+ * @param {string} [nome=null] - O nome do usuário (opcional).
+ * @returns {Promise<object|null>} Os dados do usuário ou null em caso de erro.
+ */
+async function findOrCreateUser(whatsappJid, nome = null) {
+    try {
+        // Tenta encontrar o usuário
+        let { data: usuario, error } = await supabase
+            .from('usuarios')
+            .select('*')
+            .eq('whatsapp', whatsappJid)
+            .single();
+
+        if (error && error.code !== 'PGRST116') { // PGRST116 é o erro para "nenhuma linha encontrada"
+            console.error("❌ Erro ao buscar usuário no Supabase:", error.message);
+            return null;
+        }
+
+        if (usuario) {
+            console.log(`✅ Usuário existente encontrado: ${usuario.whatsapp}`);
+            return usuario;
+        } else {
+            // Se o usuário não existe, cria um novo
+            console.log(`➕ Criando novo usuário: ${whatsappJid}`);
+            const { data: novoUsuario, error: createError } = await supabase
+                .from('usuarios')
+                .insert({ whatsapp: whatsappJid, nome: nome })
+                .select('*') // Retorna os dados do usuário recém-criado
+                .single();
+
+            if (createError) {
+                console.error("❌ Erro ao criar novo usuário no Supabase:", createError.message);
+                return null;
+            }
+            console.log(`✅ Novo usuário criado com sucesso: ${novoUsuario.whatsapp}`);
+            return novoUsuario;
+        }
+    } catch (e) {
+        console.error("❌ Erro inesperado em findOrCreateUser:", e.message);
+        return null;
+    }
+}
+
+
 // Exporta as funções
-module.exports = { saveGasto, getGastosByUser, getGastosStats };
+module.exports = { saveGasto, getGastosByUser, getGastosStats, findOrCreateUser };

@@ -8,7 +8,7 @@ const { Boom } = require("@hapi/boom");
 const P = require("pino");
 const fs = require("fs");
 require("dotenv").config();
-const { saveGasto, getGastosByUser } = require("./supabase"); // Adicionado getGastosByUser
+const { saveGasto, getGastosByUser, findOrCreateUser } = require("./supabase"); // Adicionado findOrCreateUser
 const { detectarCategoria } = require("./classificador");
 const { generateAccessCode, setBotSocket } = require("./auth-service");
 
@@ -138,6 +138,21 @@ async function connectToWhatsApp() {
 
     console.log(`📩 Processando: "${text}" de ${sender}`);
 
+    // --- NOVO: Encontra ou cria o usuário antes de processar a mensagem ---
+    const usuario = await findOrCreateUser(sender);
+    if (!usuario) {
+        console.log(`❌ Não foi possível encontrar ou criar o usuário ${sender}. Abortando processamento.`);
+        await botSocket.sendMessage(sender, { text: "⚠️ Ocorreu um erro ao identificar seu usuário. Por favor, tente novamente mais tarde." });
+        return;
+    }
+    // Se o usuário foi recém-criado e a mensagem não é um comando, pode enviar uma mensagem de boas-vindas
+    // (Você pode adicionar uma lógica aqui para identificar um usuário novo, por exemplo, verificando se 'criado_em' é muito recente)
+    // if (usuario.isNewUser && !text.startsWith('/')) { // 'isNewUser' precisaria ser um campo retornado pela função, ou verificar timestamp
+    //     await botSocket.sendMessage(sender, { text: "👋 Olá! Bem-vindo(a) ao PoquidaGrana! Para começar, digite um gasto como 'Gastei 15 no almoço'." });
+    // }
+    // --- FIM DA VERIFICAÇÃO DE USUÁRIO ---
+
+
     // Comando para gerar código de acesso ao sistema web
     if (text.includes("/codigo") || text.includes("/acesso") || text.includes("/web")) {
       const accessCode = generateAccessCode(sender);
@@ -162,6 +177,7 @@ async function connectToWhatsApp() {
     // NOVO COMANDO: Puxar todos os gastos do usuário
     if (text.includes("/historico") || text.includes("/meusgastos")) {
         console.log(`🔍 Buscando histórico de gastos para ${sender}`);
+        // A função getGastosByUser já ordena por 'criado_em'
         const gastos = await getGastosByUser(sender);
 
         if (gastos.length === 0) {
@@ -169,20 +185,22 @@ async function connectToWhatsApp() {
             return;
         }
 
-        let mensagemHistorico = "📊 *Seu Histórico de Gastos:*\n\n";
-        let totalGastos = 0;
+        let mensagemHistorico = "📊 *Seu Histórico de Gastos (Últimos 10):*\n\n"; // Título ajustado
+        let totalGastosExibidos = 0; // Renomeado para clareza
 
-        // Limita a exibição aos últimos 10 gastos para não sobrecarregar o chat
-        const ultimosGastos = gastos.slice(-10); // Pega os 10 últimos
+        // Para ordenar corretamente pela data mais recente
+        // (getGastosByUser já faz `order("criado_em", { ascending: false })`)
+        // entao os primeiros 10 já são os mais recentes.
+        const ultimosGastos = gastos.slice(0, 10); // Pega os 10 primeiros (mais recentes)
 
         ultimosGastos.forEach(gasto => {
-            const data = new Date(gasto.created_at).toLocaleDateString('pt-BR');
-            mensagemHistorico += `• ${data} - R$ ${gasto.valor.toFixed(2)} (${gasto.categoria})\n`;
-            totalGastos += gasto.valor;
+            const data = new Date(gasto.criado_em).toLocaleDateString('pt-BR'); // Usa criado_em
+            mensagemHistorico += `• ${data} - R$ ${parseFloat(gasto.valor).toFixed(2)} (${gasto.categoria})\n`; // Garante parseFloat e toFixed
+            totalGastosExibidos += parseFloat(gasto.valor); // Garante parseFloat
         });
 
-        mensagemHistorico += `\n*Total dos últimos gastos: R$ ${totalGastos.toFixed(2)}*`;
-        mensagemHistorico += `\n\nPara ver o relatório completo, digite: */codigo*`;
+        mensagemHistorico += `\n*Total exibido: R$ ${totalGastosExibidos.toFixed(2)}*`;
+        mensagemHistorico += `\n\nPara ver o relatório completo: */codigo*`;
 
         await botSocket.sendMessage(sender, { text: mensagemHistorico });
         return;
