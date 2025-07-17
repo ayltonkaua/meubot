@@ -178,6 +178,11 @@ async function connectToWhatsApp() {
   });
 }
 
+const express = require("express");
+const app = express();
+
+app.get("/", (req, res) => res.send("🤖 PoquidaGrana rodando"));
+app.listen(3000, () => console.log("🌐 Servidor web rodando em http://localhost:3000"));
 
 
 // Inicia o servidor web
