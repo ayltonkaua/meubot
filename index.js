@@ -8,7 +8,7 @@ const { Boom } = require("@hapi/boom");
 const P = require("pino");
 const fs = require("fs");
 require("dotenv").config();
-const { saveGasto } = require("./supabase");
+const { saveGasto, getGastosByUser } = require("./supabase"); // Adicionado getGastosByUser
 const { detectarCategoria } = require("./classificador");
 const { generateAccessCode, setBotSocket } = require("./auth-service");
 
@@ -159,6 +159,36 @@ async function connectToWhatsApp() {
       return;
     }
 
+    // NOVO COMANDO: Puxar todos os gastos do usuário
+    if (text.includes("/historico") || text.includes("/meusgastos")) {
+        console.log(`🔍 Buscando histórico de gastos para ${sender}`);
+        const gastos = await getGastosByUser(sender);
+
+        if (gastos.length === 0) {
+            await botSocket.sendMessage(sender, { text: "Você ainda não tem gastos registrados." });
+            return;
+        }
+
+        let mensagemHistorico = "📊 *Seu Histórico de Gastos:*\n\n";
+        let totalGastos = 0;
+
+        // Limita a exibição aos últimos 10 gastos para não sobrecarregar o chat
+        const ultimosGastos = gastos.slice(-10); // Pega os 10 últimos
+
+        ultimosGastos.forEach(gasto => {
+            const data = new Date(gasto.created_at).toLocaleDateString('pt-BR');
+            mensagemHistorico += `• ${data} - R$ ${gasto.valor.toFixed(2)} (${gasto.categoria})\n`;
+            totalGastos += gasto.valor;
+        });
+
+        mensagemHistorico += `\n*Total dos últimos gastos: R$ ${totalGastos.toFixed(2)}*`;
+        mensagemHistorico += `\n\nPara ver o relatório completo, digite: */codigo*`;
+
+        await botSocket.sendMessage(sender, { text: mensagemHistorico });
+        return;
+    }
+
+
     const valorMatch = text.match(/(\d+[\.,]?\d*)/);
     const valor = valorMatch ? parseFloat(valorMatch[0].replace(",", ".")) : null;
     const categoria = detectarCategoria(text);
@@ -166,7 +196,7 @@ async function connectToWhatsApp() {
     if (!valor || !categoria) {
       console.log("⚠️ Não foi possível identificar um valor e uma categoria.");
       await botSocket.sendMessage(sender, {
-        text: `❓ *Como usar o bot:*\n\n• Digite o valor e descrição do gasto\nEx: "Gastei 15 no almoço"\n\n• Para ver relatórios: */codigo*\n• Para resumo: */relatorio*`,
+        text: `❓ *Como usar o bot:*\n\n• Digite o valor e descrição do gasto\nEx: "Gastei 15 no almoço"\n\n• Para ver relatórios: */codigo*\n• Para resumo: */relatorio*\n• Para ver seus últimos gastos: */historico*`, // Atualizado
       });
       return;
     }
@@ -181,7 +211,7 @@ async function connectToWhatsApp() {
     await saveGasto(gastoParaSalvar);
 
     await botSocket.sendMessage(sender, {
-      text: `✅ *Gasto Registrado!*\n\n💰 Valor: R$ ${valor.toFixed(2)}\n📂 Categoria: ${categoria}\n\n📊 Para ver relatórios: */codigo*`,
+      text: `✅ *Gasto Registrado!*\n\n💰 Valor: R$ ${valor.toFixed(2)}\n📂 Categoria: ${categoria}\n\n📊 Para ver relatórios: */codigo*\n📜 Para ver seus últimos gastos: */historico*`, // Atualizado
     });
   });
 }
