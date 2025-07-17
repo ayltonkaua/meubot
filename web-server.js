@@ -1,11 +1,16 @@
-
 const express = require('express');
 const path = require('path');
-const { generateAccessCode, verifyAccessCode, sendCodeViaWhatsApp } = require('./auth-service');
+require('dotenv').config();
+const {
+  generateAccessCode,
+  verifyAccessCode,
+  sendCodeViaWhatsApp,
+} = require('./auth-service');
 const { getGastosByUser, getGastosStats } = require('./supabase');
 
 const app = express();
-const port = 5000;
+const PORT = process.env.PORT || 5000;
+const BASE_URL = process.env.WEB_URL || `http://localhost:${PORT}`;
 
 // Configuração do EJS
 app.set('view engine', 'ejs');
@@ -22,36 +27,31 @@ app.get('/', (req, res) => {
 // Processar login
 app.post('/login', async (req, res) => {
   const { whatsapp } = req.body;
-  
+
   if (!whatsapp) {
     return res.render('login', { error: 'Digite seu número do WhatsApp' });
   }
-  
-  // Formatar número do WhatsApp
+
   const formattedWhatsapp = whatsapp.replace(/\D/g, '');
   const jid = `${formattedWhatsapp}@s.whatsapp.net`;
-  
+
   try {
     console.log(`🔄 Gerando código para JID: ${jid}`);
     const accessCode = generateAccessCode(jid);
     console.log(`🔑 Código gerado: ${accessCode}`);
-    
-    // Enviar código via WhatsApp
-    console.log(`📤 Tentando enviar código via WhatsApp...`);
-    
-    // Aguarda mais tempo para garantir que o socket esteja completamente pronto
+
     await new Promise(resolve => setTimeout(resolve, 3000));
-    
+
     await sendCodeViaWhatsApp(jid, accessCode);
     console.log(`✅ Código enviado com sucesso`);
-    
-    res.render('verify-code', { 
-      whatsapp: formattedWhatsapp, 
+
+    res.render('verify-code', {
+      whatsapp: formattedWhatsapp,
       accessCode: null,
-      success: 'Código enviado para seu WhatsApp!' 
+      success: 'Código enviado para seu WhatsApp!',
     });
   } catch (error) {
-    console.error('❌ Erro completo:', error);
+    console.error('❌ Erro ao enviar código:', error);
     res.render('login', { error: 'Erro ao enviar código. Tente novamente.' });
   }
 });
@@ -60,30 +60,28 @@ app.post('/login', async (req, res) => {
 app.post('/verify', async (req, res) => {
   const { whatsapp, code } = req.body;
   const jid = `${whatsapp}@s.whatsapp.net`;
-  
+
   console.log(`🔍 Verificando código: ${code} para JID: ${jid}`);
-  
+
   try {
     const isValid = verifyAccessCode(jid, code);
     console.log(`✅ Código válido: ${isValid}`);
-    
+
     if (isValid) {
-      console.log(`🚀 Redirecionando para dashboard`);
       res.redirect(`/dashboard?user=${encodeURIComponent(jid)}`);
     } else {
-      console.log(`❌ Código inválido ou expirado`);
-      res.render('verify-code', { 
-        whatsapp, 
+      res.render('verify-code', {
+        whatsapp,
         error: 'Código inválido ou expirado',
-        accessCode: null 
+        accessCode: null,
       });
     }
   } catch (error) {
     console.error('❌ Erro ao verificar código:', error);
-    res.render('verify-code', { 
-      whatsapp, 
+    res.render('verify-code', {
+      whatsapp,
       error: 'Erro ao verificar código',
-      accessCode: null 
+      accessCode: null,
     });
   }
 });
@@ -91,36 +89,34 @@ app.post('/verify', async (req, res) => {
 // Dashboard
 app.get('/dashboard', async (req, res) => {
   const userJid = req.query.user;
-  
-  if (!userJid) {
-    return res.redirect('/');
-  }
-  
+
+  if (!userJid) return res.redirect('/');
+
   try {
     const gastos = await getGastosByUser(userJid);
     const stats = await getGastosStats(userJid);
-    
-    res.render('dashboard', { 
-      gastos, 
-      stats, 
+
+    res.render('dashboard', {
+      gastos,
+      stats,
       userJid,
-      whatsapp: userJid.replace('@s.whatsapp.net', '')
+      whatsapp: userJid.replace('@s.whatsapp.net', ''),
     });
   } catch (error) {
-    console.error('Erro ao carregar dashboard:', error);
-    res.render('dashboard', { 
-      gastos: [], 
-      stats: null, 
+    console.error('❌ Erro ao carregar dashboard:', error);
+    res.render('dashboard', {
+      gastos: [],
+      stats: null,
       userJid,
-      error: 'Erro ao carregar dados' 
+      error: 'Erro ao carregar dados',
     });
   }
 });
 
-// API para dados do gráfico
+// API do gráfico
 app.get('/api/chart-data', async (req, res) => {
   const userJid = req.query.user;
-  
+
   try {
     const stats = await getGastosStats(userJid);
     res.json(stats);
@@ -129,7 +125,9 @@ app.get('/api/chart-data', async (req, res) => {
   }
 });
 
-app.listen(port, '0.0.0.0', () => {
-  console.log(`🌐 Servidor web rodando na porta ${port}`);
-  console.log(`🔗 Acesse: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.app:5000`);
+// Start
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🌐 Servidor web rodando na porta ${PORT}`);
+  console.log(`🔗 Acesse: ${BASE_URL}`);
 });
+
