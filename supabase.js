@@ -4,7 +4,7 @@ require("dotenv").config();
 // Inicializa o cliente do Supabase
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY
+  process.env.SUPABASE_KEY
 );
 
 /**
@@ -16,27 +16,24 @@ const supabase = createClient(
  * @param {string} gastoData.descricao - A mensagem original que gerou o registro.
  */
 async function saveGasto(gastoData) {
-  // O 'id' não é enviado, pois o banco de dados o cria automaticamente
   const { error } = await supabase.from("gastos").insert(gastoData);
 
   if (error) {
     console.error("❌ Erro ao salvar no Supabase:", error.message);
-    // Para depuração mais detalhada, você pode logar o erro completo:
-    // console.error(error); 
   } else {
     console.log("✅ Gasto salvo com sucesso no Supabase!");
   }
 }
 
 /**
- * Busca todos os gastos de um usuário específico
+ * Busca todos os gastos de um usuário específico, ordenados do mais recente para o mais antigo.
  */
 async function getGastosByUser(userJid) {
   const { data, error } = await supabase
     .from("gastos")
     .select("*")
     .eq("usuario_id", userJid)
-    .order("criado_em", { ascending: false }); // Alterado para 'criado_em' conforme sua tabela gastos
+    .order("criado_em", { ascending: false });
 
   if (error) {
     console.error("❌ Erro ao buscar gastos:", error.message);
@@ -45,6 +42,47 @@ async function getGastosByUser(userJid) {
 
   return data || [];
 }
+
+/**
+ * Atualiza um gasto existente no banco de dados.
+ * @param {string} gastoId - O ID (UUID) do gasto a ser atualizado.
+ * @param {object} updates - Um objeto contendo os campos a serem atualizados (ex: { valor: 100, categoria: "nova" }).
+ */
+async function updateGasto(gastoId, updates) {
+  const { data, error } = await supabase
+    .from("gastos")
+    .update(updates)
+    .eq("id", gastoId)
+    .select();
+
+  if (error) {
+    console.error("❌ Erro ao atualizar gasto no Supabase:", error.message);
+    return { success: false, error: error.message };
+  } else {
+    console.log(`✅ Gasto ${gastoId} atualizado com sucesso!`);
+    return { success: true, data: data[0] };
+  }
+}
+
+/**
+ * Deleta um gasto existente no banco de dados.
+ * @param {string} gastoId - O ID (UUID) do gasto a ser deletado.
+ */
+async function deleteGasto(gastoId) {
+  const { error } = await supabase
+    .from("gastos")
+    .delete()
+    .eq("id", gastoId);
+
+  if (error) {
+    console.error("❌ Erro ao deletar gasto no Supabase:", error.message);
+    return { success: false, error: error.message };
+  } else {
+    console.log(`🗑️ Gasto ${gastoId} deletado com sucesso!`);
+    return { success: true };
+  }
+}
+
 
 /**
  * Gera estatísticas dos gastos do usuário
@@ -76,7 +114,7 @@ async function getGastosStats(userJid) {
     categorias[gasto.categoria].count++;
     
     // Estatísticas por mês
-    const mes = new Date(gasto.criado_em).toLocaleDateString('pt-BR', { // Alterado para 'criado_em'
+    const mes = new Date(gasto.criado_em).toLocaleDateString('pt-BR', {
       year: 'numeric', 
       month: 'long' 
     });
@@ -107,14 +145,13 @@ async function getGastosStats(userJid) {
  */
 async function findOrCreateUser(whatsappJid, nome = null) {
     try {
-        // Tenta encontrar o usuário
         let { data: usuario, error } = await supabase
             .from('usuarios')
             .select('*')
             .eq('whatsapp', whatsappJid)
             .single();
 
-        if (error && error.code !== 'PGRST116') { // PGRST116 é o erro para "nenhuma linha encontrada"
+        if (error && error.code !== 'PGRST116') {
             console.error("❌ Erro ao buscar usuário no Supabase:", error.message);
             return null;
         }
@@ -123,12 +160,11 @@ async function findOrCreateUser(whatsappJid, nome = null) {
             console.log(`✅ Usuário existente encontrado: ${usuario.whatsapp}`);
             return usuario;
         } else {
-            // Se o usuário não existe, cria um novo
             console.log(`➕ Criando novo usuário: ${whatsappJid}`);
             const { data: novoUsuario, error: createError } = await supabase
                 .from('usuarios')
                 .insert({ whatsapp: whatsappJid, nome: nome })
-                .select('*') // Retorna os dados do usuário recém-criado
+                .select('*')
                 .single();
 
             if (createError) {
@@ -146,4 +182,4 @@ async function findOrCreateUser(whatsappJid, nome = null) {
 
 
 // Exporta as funções
-module.exports = { saveGasto, getGastosByUser, getGastosStats, findOrCreateUser };
+module.exports = { saveGasto, getGastosByUser, getGastosStats, findOrCreateUser, updateGasto, deleteGasto }; // Exporta deleteGasto
