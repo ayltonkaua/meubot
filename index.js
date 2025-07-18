@@ -254,8 +254,8 @@ async function connectToWhatsApp() {
         {
           title: "Opções Rápidas",
           rows: [
-            { id: 'id_historico_list', title: "📜 Ver Histórico", description: "Veja seus últimos gastos" },
-            { id: 'id_relatorio_list', title: "📊 Acessar Relatório Web", description: "Abra o painel de controle" },
+            { rowId: 'id_historico_list', title: "📜 Ver Histórico", description: "Veja seus últimos gastos" },
+            { rowId: 'id_relatorio_list', title: "📊 Acessar Relatório Web", description: "Abra o painel de controle" },
           ],
         },
       ];
@@ -286,9 +286,9 @@ async function connectToWhatsApp() {
       {
         title: "Próximos Passos",
         rows: [
-          { id: 'id_excluir_gasto_list', title: '🗑️ Excluir Último Gasto', description: 'Remover o gasto que acabei de registrar' },
-          { id: 'id_historico_list', title: '📜 Ver Histórico', description: 'Consultar meus gastos anteriores' },
-          { id: 'id_relatorio_list', title: '📊 Acessar Relatório Web', description: 'Ver gráficos e estatísticas' }
+          { rowId: 'id_excluir_gasto_list', title: '🗑️ Excluir Último Gasto', description: 'Remover o gasto que acabei de registrar' },
+          { rowId: 'id_historico_list', title: '📜 Ver Histórico', description: 'Consultar meus gastos anteriores' },
+          { rowId: 'id_relatorio_list', title: '📊 Acessar Relatório Web', description: 'Ver gráficos e estatísticas' }
         ]
       }
     ];
