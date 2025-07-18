@@ -2,7 +2,6 @@ const makeWASocket = require("@whiskeysockets/baileys").default;
 const {
   useMultiFileAuthState,
   DisconnectReason,
-  fetchLatestBaileysVersion,
 } = require("@whiskeysockets/baileys");
 const { Boom } = require("@hapi/boom");
 const P = require("pino");
@@ -12,15 +11,17 @@ const { saveGasto, getGastosByUser, findOrCreateUser, deleteGasto } = require(".
 const { detectarCategoria } = require("./classificador");
 const { generateAccessCode, setBotSocket } = require("./auth-service");
 
+// Pega a versão instalada do baileys no package.json
+const { version: installedVersion } = require("@whiskeysockets/baileys/package.json");
+const installedVersionArray = installedVersion.split('.').map(n => Number(n));
+
 // --- CONTROLE DE INSTÂNCIA E MENSAGENS ---
 let botSocket = null;
 const processedMessages = new Set();
 
-
 if (!fs.existsSync("./auth")) {
   fs.mkdirSync("./auth");
 }
-
 
 async function connectToWhatsApp() {
   if (botSocket) {
@@ -33,13 +34,13 @@ async function connectToWhatsApp() {
   }
 
   const { state, saveCreds } = await useMultiFileAuthState("auth");
-  const { version } = await fetchLatestBaileysVersion();
-  console.log(`Iniciando Baileys v${version.join(".")}`);
+
+  console.log(`✅ Iniciando Baileys instalado: v${installedVersion}`);
 
   botSocket = makeWASocket({
     auth: state,
     logger: P({ level: "silent" }),
-    version,
+    version: installedVersionArray,
     getMessage: (key) => undefined,
   });
 
@@ -47,8 +48,8 @@ async function connectToWhatsApp() {
     const { connection, lastDisconnect, qr } = update;
 
     if (qr) {
-        console.log("\n📸 Escaneie o QR code abaixo no WhatsApp:");
-        console.log(qr);
+      console.log("\n📸 Escaneie o QR code abaixo no WhatsApp:");
+      console.log(qr);
     }
 
     if (connection === "close") {
@@ -71,12 +72,12 @@ async function connectToWhatsApp() {
       console.log("✅ Conexão estabelecida com o WhatsApp!");
       console.log(`👤 Usuário conectado: ${botSocket.user?.name || 'Desconhecido'}`);
       console.log(`📱 Número do bot: ${botSocket.user?.id || 'N/A'}`);
-      
+
       setBotSocket(botSocket);
-      
+
       setTimeout(async () => {
         console.log("🔧 Socket configurado e pronto para envio de códigos");
-        
+
         try {
           console.log("🔍 Testando conectividade do bot...");
           await botSocket.sendMessage(botSocket.user.id, {
@@ -127,71 +128,73 @@ async function connectToWhatsApp() {
 
     const usuario = await findOrCreateUser(sender);
     if (!usuario) {
-        console.log(`❌ Não foi possível encontrar ou criar o usuário ${sender}. Abortando processamento.`);
-        await botSocket.sendMessage(sender, { text: "⚠️ Ocorreu um erro ao identificar seu usuário. Por favor, tente novamente mais tarde." });
-        return;
+      console.log(`❌ Não foi possível encontrar ou criar o usuário ${sender}. Abortando processamento.`);
+      await botSocket.sendMessage(sender, { text: "⚠️ Ocorreu um erro ao identificar seu usuário. Por favor, tente novamente mais tarde." });
+      return;
     }
 
-    // --- NOVO: Tratamento de cliques em itens de List Message ---
+    // --- Tratamento de cliques em itens de List Message ---
     if (msg.message.listResponseMessage) {
-        const selectedRowId = msg.message.listResponseMessage.singleSelectReply.selectedRowId;
-        console.log(`Item de lista clicado: ${selectedRowId}`);
+      const selectedRowId = msg.message.listResponseMessage.singleSelectReply.selectedRowId;
+      console.log(`Item de lista clicado: ${selectedRowId}`);
 
-        switch (selectedRowId) {
-            case 'id_historico_list': // Corrigido para corresponder ao ID na lista
-                const gastos = await getGastosByUser(sender);
-                if (gastos.length === 0) {
-                    await botSocket.sendMessage(sender, { text: "Você ainda não tem gastos registrados." });
-                    return;
-                }
-                let mensagemHistorico = "📊 *Seu Histórico de Gastos (Últimos 10):*\n\n";
-                let totalGastosExibidos = 0;
-                const ultimosGastos = gastos.slice(0, 10);
+      switch (selectedRowId) {
+        case 'id_historico_list': {
+          const gastos = await getGastosByUser(sender);
+          if (gastos.length === 0) {
+            await botSocket.sendMessage(sender, { text: "Você ainda não tem gastos registrados." });
+            return;
+          }
+          let mensagemHistorico = "📊 *Seu Histórico de Gastos (Últimos 10):*\n\n";
+          let totalGastosExibidos = 0;
+          const ultimosGastos = gastos.slice(0, 10);
 
-                ultimosGastos.forEach(gasto => {
-                    const data = new Date(gasto.criado_em).toLocaleDateString('pt-BR');
-                    mensagemHistorico += `• ${data} - R$ ${parseFloat(gasto.valor).toFixed(2)} (${gasto.categoria})\n`;
-                    totalGastosExibidos += parseFloat(gasto.valor);
-                });
+          ultimosGastos.forEach(gasto => {
+            const data = new Date(gasto.criado_em).toLocaleDateString('pt-BR');
+            mensagemHistorico += `• ${data} - R$ ${parseFloat(gasto.valor).toFixed(2)} (${gasto.categoria})\n`;
+            totalGastosExibidos += parseFloat(gasto.valor);
+          });
 
-                mensagemHistorico += `\n*Total exibido: R$ ${totalGastosExibidos.toFixed(2)}*`;
-                mensagemHistorico += `\n\nPara ver o relatório completo: */codigo*`;
-                await botSocket.sendMessage(sender, { text: mensagemHistorico });
-                break;
-            case 'id_relatorio_list': // Corrigido para corresponder ao ID na lista
-                const webUrlRelatorio = `https://${process.env.RAILWAY_STATIC_URL || process.env.RAILWAY_PUBLIC_DOMAIN || process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.app`;
-                await botSocket.sendMessage(sender, {
-                    text: `📊 *Acesse seu relatório completo*\n\nPara ver gráficos e estatísticas detalhadas, digite: */codigo*\n\nOu acesse diretamente: ${webUrlRelatorio}`,
-                });
-                break;
-            case 'id_excluir_gasto_list': // Corrigido para corresponder ao ID na lista
-                const userGastos = await getGastosByUser(sender);
-                if (userGastos.length === 0) {
-                    await botSocket.sendMessage(sender, { text: "Você não tem gastos registrados para excluir." });
-                    return;
-                }
-                const ultimoGasto = userGastos[0];
-                
-                const deleteResult = await deleteGasto(ultimoGasto.id);
-
-                if (deleteResult.success) {
-                    await botSocket.sendMessage(sender, {
-                        text: `🗑️ *Gasto Excluído!*\n\nO último gasto (R$ ${parseFloat(ultimoGasto.valor).toFixed(2)} - ${ultimoGasto.categoria}) foi removido com sucesso.`
-                    });
-                } else {
-                    await botSocket.sendMessage(sender, {
-                        text: `❌ Erro ao excluir o gasto: ${deleteResult.error}`
-                    });
-                }
-                break;
-            default:
-                await botSocket.sendMessage(sender, { text: "Opção de lista não reconhecida." });
-                break;
+          mensagemHistorico += `\n*Total exibido: R$ ${totalGastosExibidos.toFixed(2)}*`;
+          mensagemHistorico += `\n\nPara ver o relatório completo: */codigo*`;
+          await botSocket.sendMessage(sender, { text: mensagemHistorico });
+          break;
         }
-        return; // Retorna para não processar o clique do botão como uma mensagem de texto normal
-    }
-    // --- FIM do tratamento de cliques em itens de lista ---
+        case 'id_relatorio_list': {
+          const webUrlRelatorio = `https://${process.env.RAILWAY_STATIC_URL || process.env.RAILWAY_PUBLIC_DOMAIN || process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.app`;
+          await botSocket.sendMessage(sender, {
+            text: `📊 *Acesse seu relatório completo*\n\nPara ver gráficos e estatísticas detalhadas, digite: */codigo*\n\nOu acesse diretamente: ${webUrlRelatorio}`,
+          });
+          break;
+        }
+        case 'id_excluir_gasto_list': {
+          const userGastos = await getGastosByUser(sender);
+          if (userGastos.length === 0) {
+            await botSocket.sendMessage(sender, { text: "Você não tem gastos registrados para excluir." });
+            return;
+          }
+          const ultimoGasto = userGastos[0];
 
+          const deleteResult = await deleteGasto(ultimoGasto.id);
+
+          if (deleteResult.success) {
+            await botSocket.sendMessage(sender, {
+              text: `🗑️ *Gasto Excluído!*\n\nO último gasto (R$ ${parseFloat(ultimoGasto.valor).toFixed(2)} - ${ultimoGasto.categoria}) foi removido com sucesso.`
+            });
+          } else {
+            await botSocket.sendMessage(sender, {
+              text: `❌ Erro ao excluir o gasto: ${deleteResult.error}`
+            });
+          }
+          break;
+        }
+        default:
+          await botSocket.sendMessage(sender, { text: "Opção de lista não reconhecida." });
+          break;
+      }
+      return; // não processar como texto normal
+    }
+    // --- Fim do tratamento de cliques ---
 
     // Comando para gerar código de acesso ao sistema web
     if (text.includes("/codigo") || text.includes("/acesso") || text.includes("/web")) {
@@ -214,31 +217,30 @@ async function connectToWhatsApp() {
 
     // Comando: Puxar todos os gastos do usuário
     if (text.includes("/historico") || text.includes("/meusgastos")) {
-        console.log(`🔍 Buscando histórico de gastos para ${sender}`);
-        const gastos = await getGastosByUser(sender);
+      console.log(`🔍 Buscando histórico de gastos para ${sender}`);
+      const gastos = await getGastosByUser(sender);
 
-        if (gastos.length === 0) {
-            await botSocket.sendMessage(sender, { text: "Você ainda não tem gastos registrados." });
-            return;
-        }
-
-        let mensagemHistorico = "📊 *Seu Histórico de Gastos (Últimos 10):*\n\n";
-        let totalGastosExibidos = 0;
-        const ultimosGastos = gastos.slice(0, 10);
-
-        ultimosGastos.forEach(gasto => {
-            const data = new Date(gasto.criado_em).toLocaleDateString('pt-BR');
-            mensagemHistorico += `• ${data} - R$ ${parseFloat(gasto.valor).toFixed(2)} (${gasto.categoria})\n`;
-            totalGastosExibidos += parseFloat(gasto.valor);
-        });
-
-        mensagemHistorico += `\n*Total exibido: R$ ${totalGastosExibidos.toFixed(2)}*`;
-        mensagemHistorico += `\n\nPara ver o relatório completo: */codigo*`;
-
-        await botSocket.sendMessage(sender, { text: mensagemHistorico });
+      if (gastos.length === 0) {
+        await botSocket.sendMessage(sender, { text: "Você ainda não tem gastos registrados." });
         return;
-    }
+      }
 
+      let mensagemHistorico = "📊 *Seu Histórico de Gastos (Últimos 10):*\n\n";
+      let totalGastosExibidos = 0;
+      const ultimosGastos = gastos.slice(0, 10);
+
+      ultimosGastos.forEach(gasto => {
+        const data = new Date(gasto.criado_em).toLocaleDateString('pt-BR');
+        mensagemHistorico += `• ${data} - R$ ${parseFloat(gasto.valor).toFixed(2)} (${gasto.categoria})\n`;
+        totalGastosExibidos += parseFloat(gasto.valor);
+      });
+
+      mensagemHistorico += `\n*Total exibido: R$ ${totalGastosExibidos.toFixed(2)}*`;
+      mensagemHistorico += `\n\nPara ver o relatório completo: */codigo*`;
+
+      await botSocket.sendMessage(sender, { text: mensagemHistorico });
+      return;
+    }
 
     const valorMatch = text.match(/(\d+[\.,]?\d*)/);
     const valor = valorMatch ? parseFloat(valorMatch[0].replace(",", ".")) : null;
@@ -246,7 +248,7 @@ async function connectToWhatsApp() {
 
     if (!valor || !categoria) {
       console.log("⚠️ Não foi possível identificar um valor e uma categoria.");
-      
+
       // --- MENSAGEM DE LISTA de ajuda quando o comando não é reconhecido ---
       const helpSections = [
         {
@@ -262,7 +264,7 @@ async function connectToWhatsApp() {
         text: `❓ *Como usar o bot:*\n\n• Digite o valor e descrição do gasto\nEx: "Gastei 15 no almoço"`,
         footer: 'Ou escolha uma opção abaixo:',
         title: "Ajuda e Comandos",
-        buttonText: "Ver Opções", // Texto do botão que abre a lista
+        buttonText: "Ver Opções",
         sections: helpSections,
       };
 
@@ -279,24 +281,24 @@ async function connectToWhatsApp() {
 
     await saveGasto(gastoParaSalvar);
 
-    // --- NOVO: Mensagem de confirmação COM LIST MESSAGE para "Excluir Último Gasto" ---
+    // --- Mensagem de confirmação COM LIST MESSAGE para "Excluir Último Gasto" ---
     const confirmSections = [
-        {
-            title: "Próximos Passos",
-            rows: [
-                { id: 'id_excluir_gasto_list', title: '🗑️ Excluir Último Gasto', description: 'Remover o gasto que acabei de registrar' },
-                { id: 'id_historico_list', title: '📜 Ver Histórico', description: 'Consultar meus gastos anteriores' },
-                { id: 'id_relatorio_list', title: '📊 Acessar Relatório Web', description: 'Ver gráficos e estatísticas' }
-            ]
-        }
+      {
+        title: "Próximos Passos",
+        rows: [
+          { id: 'id_excluir_gasto_list', title: '🗑️ Excluir Último Gasto', description: 'Remover o gasto que acabei de registrar' },
+          { id: 'id_historico_list', title: '📜 Ver Histórico', description: 'Consultar meus gastos anteriores' },
+          { id: 'id_relatorio_list', title: '📊 Acessar Relatório Web', description: 'Ver gráficos e estatísticas' }
+        ]
+      }
     ];
 
     const confirmListMessage = {
-        text: `✅ *Gasto Registrado!*\n\n💰 Valor: R$ ${valor.toFixed(2)}\n📂 Categoria: ${categoria}\n\nO que você gostaria de fazer a seguir?`,
-        footer: 'Escolha uma opção na lista:',
-        title: "Ações do Gasto", // Título da mensagem de lista
-        buttonText: "Ver Ações", // Texto do botão que abre a lista
-        sections: confirmSections
+      text: `✅ *Gasto Registrado!*\n\n💰 Valor: R$ ${valor.toFixed(2)}\n📂 Categoria: ${categoria}\n\nO que você gostaria de fazer a seguir?`,
+      footer: 'Escolha uma opção na lista:',
+      title: "Ações do Gasto",
+      buttonText: "Ver Ações",
+      sections: confirmSections
     };
 
     await botSocket.sendMessage(sender, confirmListMessage);
@@ -306,11 +308,10 @@ async function connectToWhatsApp() {
 const express = require("express");
 const app = express();
 
-const PORT = process.env.PORT || 3000; 
+const PORT = process.env.PORT || 3000;
 
 app.get("/", (req, res) => res.send("🤖 PoquidaGrana rodando"));
 app.listen(PORT, () => console.log(`🌐 Servidor web rodando na porta ${PORT}`));
-
 
 require('./web-server');
 
