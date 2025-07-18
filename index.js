@@ -7,15 +7,24 @@ const { Boom } = require("@hapi/boom");
 const P = require("pino");
 const fs = require("fs");
 require("dotenv").config();
-const { saveGasto, getGastosByUser, findOrCreateUser, deleteGasto } = require("./supabase");
+const qrcode = require("qrcode-terminal");
+
+const {
+  saveGasto,
+  getGastosByUser,
+  findOrCreateUser,
+  deleteGasto,
+} = require("./supabase");
 const { detectarCategoria } = require("./classificador");
 const { generateAccessCode, setBotSocket } = require("./auth-service");
 
-// Pega a versão instalada do baileys no package.json
-const { version: installedVersion } = require("@whiskeysockets/baileys/package.json");
-const installedVersionArray = installedVersion.split('.').map(n => Number(n));
+// Versão oficial mais recente do WhatsApp Web protocol (atualizada em 2025)
+const latestVersion = [2, 2347, 11]; // EXEMPLO: atualize aqui conforme oficial (você pode pegar do baileys com fetchLatestBaileysVersion)
 
-// --- CONTROLE DE INSTÂNCIA E MENSAGENS ---
+// Você pode usar este helper para obter a versão automaticamente:
+// const { fetchLatestBaileysVersion } = require("@whiskeysockets/baileys");
+// const [latestVersion] = await fetchLatestBaileysVersion();
+
 let botSocket = null;
 const processedMessages = new Set();
 
@@ -35,12 +44,14 @@ async function connectToWhatsApp() {
 
   const { state, saveCreds } = await useMultiFileAuthState("auth");
 
-  console.log(`✅ Iniciando Baileys instalado: v${installedVersion}`);
+  console.log(`✅ Iniciando Baileys com protocolo WhatsApp Web versão: v${latestVersion.join('.')}`);
 
   botSocket = makeWASocket({
     auth: state,
     logger: P({ level: "silent" }),
-    version: installedVersionArray,
+    version: latestVersion,
+    printQRInTerminal: false, // Desativa print automático (vamos usar qrcode-terminal)
+    browser: ["PoquidaGrana", "Desktop", "1.0.0"], // Identificação correta do client
     getMessage: (key) => undefined,
   });
 
@@ -49,7 +60,7 @@ async function connectToWhatsApp() {
 
     if (qr) {
       console.log("\n📸 Escaneie o QR code abaixo no WhatsApp:");
-      console.log(qr);
+      qrcode.generate(qr, { small: true });
     }
 
     if (connection === "close") {
@@ -77,7 +88,6 @@ async function connectToWhatsApp() {
 
       setTimeout(async () => {
         console.log("🔧 Socket configurado e pronto para envio de códigos");
-
         try {
           console.log("🔍 Testando conectividade do bot...");
           await botSocket.sendMessage(botSocket.user.id, {
@@ -133,7 +143,7 @@ async function connectToWhatsApp() {
       return;
     }
 
-    // --- Tratamento de cliques em itens de List Message ---
+    // Tratamento das mensagens e List Messages
     if (msg.message.listResponseMessage) {
       const selectedRowId = msg.message.listResponseMessage.singleSelectReply.selectedRowId;
       console.log(`Item de lista clicado: ${selectedRowId}`);
@@ -192,9 +202,8 @@ async function connectToWhatsApp() {
           await botSocket.sendMessage(sender, { text: "Opção de lista não reconhecida." });
           break;
       }
-      return; // não processar como texto normal
+      return;
     }
-    // --- Fim do tratamento de cliques ---
 
     // Comando para gerar código de acesso ao sistema web
     if (text.includes("/codigo") || text.includes("/acesso") || text.includes("/web")) {
@@ -249,7 +258,6 @@ async function connectToWhatsApp() {
     if (!valor || !categoria) {
       console.log("⚠️ Não foi possível identificar um valor e uma categoria.");
 
-      // --- MENSAGEM DE LISTA de ajuda quando o comando não é reconhecido ---
       const helpSections = [
         {
           title: "Opções Rápidas",
@@ -281,7 +289,6 @@ async function connectToWhatsApp() {
 
     await saveGasto(gastoParaSalvar);
 
-    // --- Mensagem de confirmação COM LIST MESSAGE para "Excluir Último Gasto" ---
     const confirmSections = [
       {
         title: "Próximos Passos",
@@ -307,7 +314,6 @@ async function connectToWhatsApp() {
 
 const express = require("express");
 const app = express();
-
 const PORT = process.env.PORT || 3000;
 
 app.get("/", (req, res) => res.send("🤖 PoquidaGrana rodando"));
