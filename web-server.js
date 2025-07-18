@@ -2,14 +2,14 @@
 const express = require("express");
 const ejs = require("ejs");
 const path = require("path");
-require('dotenv').config(); // Garante que .env seja carregado
+require('dotenv').config(); 
 const { getGastosByUser, getGastosStats } = require("./supabase");
-const { generateAccessCode, verifyAccessCode, sendCodeViaWhatsApp, isValidAccessCode } = require("./auth-service"); // Importe tudo que precisa do auth-service
-const qrcode = require("qrcode"); // Importar a biblioteca qrcode
+const { generateAccessCode, verifyAccessCode, sendCodeViaWhatsApp, isValidAccessCode } = require("./auth-service"); 
+const qrcode = require("qrcode"); 
 
 const app = express();
 const PORT = process.env.PORT || 5000; 
-const BASE_URL = process.env.WEB_URL || `http://localhost:${PORT}`; // Mantenha isso se usar para logs ou links internos
+const BASE_URL = process.env.WEB_URL || `http://localhost:${PORT}`; 
 
 // Configuração do EJS
 app.set("view engine", "ejs");
@@ -43,7 +43,6 @@ app.post('/login', async (req, res) => {
     const accessCode = generateAccessCode(jid);
     console.log(`🔑 Código gerado: ${accessCode}`);
 
-    // Um pequeno atraso para simular o envio, se necessário
     await new Promise(resolve => setTimeout(resolve, 3000));
 
     await sendCodeViaWhatsApp(jid, accessCode);
@@ -68,12 +67,10 @@ app.post('/verify', async (req, res) => {
   console.log(`🔍 Verificando código: ${code} para JID: ${jid}`);
 
   try {
-    // A função isValidAccessCode já está no auth-service
     const isValid = isValidAccessCode(jid, code); 
     console.log(`✅ Código válido: ${isValid}`);
 
     if (isValid) {
-      // Redireciona para o dashboard passando o jid do usuário
       res.redirect(`/dashboard?jid=${encodeURIComponent(jid)}&code=${encodeURIComponent(code)}`);
     } else {
       res.render('verify-code', {
@@ -94,10 +91,9 @@ app.post('/verify', async (req, res) => {
 
 // Dashboard
 app.get('/dashboard', async (req, res) => {
-  const userJid = req.query.jid; // Use 'jid' aqui
-  const accessCode = req.query.code; // Obtenha o código também
+  const userJid = req.query.jid; 
+  const accessCode = req.query.code; 
 
-  // Verificação de acesso para o dashboard (importante para segurança)
   if (!userJid || !accessCode || !isValidAccessCode(userJid, accessCode)) {
     console.log(`❌ Acesso negado ao dashboard para JID: ${userJid}, Código: ${accessCode}`);
     return res.status(401).send("Acesso negado ou código inválido/expirado para o dashboard.");
@@ -107,11 +103,10 @@ app.get('/dashboard', async (req, res) => {
     const gastos = await getGastosByUser(userJid);
     const stats = await getGastosStats(userJid);
 
-    // Formata os dados para o EJS
     const gastosFormatados = gastos.map((g) => ({
       ...g,
       data_criacao_formatada: new Date(g.criado_em).toLocaleDateString("pt-BR"),
-      valor_formatado: parseFloat(g.valor).toFixed(2).replace('.', ',') // Formato BR
+      valor_formatado: parseFloat(g.valor).toFixed(2).replace('.', ',')
     }));
 
     res.render("dashboard", {
@@ -135,11 +130,6 @@ app.get('/dashboard', async (req, res) => {
 // API do gráfico
 app.get('/api/chart-data', async (req, res) => {
   const userJid = req.query.user;
-  // Adicionar verificação de código de acesso aqui também para segurança da API
-  // const accessCode = req.query.code;
-  // if (!userJid || !accessCode || !isValidAccessCode(userJid, accessCode)) {
-  //   return res.status(401).json({ error: 'Acesso negado à API.' });
-  // }
 
   try {
     const stats = await getGastosStats(userJid);
@@ -152,14 +142,13 @@ app.get('/api/chart-data', async (req, res) => {
 
 // NOVO ENDPOINT: Para gerar e servir o QR code como imagem
 app.get("/qr", async (req, res) => {
-  const qrData = req.query.data; // O dado do QR code será passado como parâmetro na URL
+  const qrData = req.query.data; 
 
   if (!qrData) {
     return res.status(400).send("Dados do QR code não fornecidos.");
   }
 
   try {
-    // Gera o QR code como uma imagem PNG
     const qrPng = await qrcode.toBuffer(qrData);
 
     res.writeHead(200, {
@@ -173,6 +162,4 @@ app.get("/qr", async (req, res) => {
   }
 });
 
-// O app Express será exportado e iniciado pelo index.js
 module.exports = app;
-```
