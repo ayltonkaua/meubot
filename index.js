@@ -59,9 +59,18 @@ async function connectToWhatsApp() {
         console.log("\n📸 Escaneie o QR code abaixo no WhatsApp:");
         qrcodeTerminal.generate(qr, { small: true }); // Continua gerando no terminal
 
-        // NOVO: Link para a imagem do QR Code
-        const railwayPublicDomain = process.env.RAILWAY_PUBLIC_DOMAIN || `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.app`;
-        const qrImageUrl = `${railwayPublicDomain}/qr?data=${encodeURIComponent(qr)}`;
+        // CORREÇÃO AQUI: Priorize RAILWAY_PUBLIC_DOMAIN, caso contrário use RAILWAY_STATIC_URL
+        // Acessar Railway URL: Railway fornece RAILWAY_PUBLIC_DOMAIN (o principal) ou RAILWAY_STATIC_URL
+        const BASE_RAILWAY_URL = process.env.RAILWAY_PUBLIC_DOMAIN || process.env.RAILWAY_STATIC_URL;
+        let qrImageUrl;
+        
+        if (BASE_RAILWAY_URL) {
+            qrImageUrl = `https://${BASE_RAILWAY_URL}/qr?data=${encodeURIComponent(qr)}`;
+        } else {
+            // Fallback para Replit se não estiver no Railway (para desenvolvimento local, etc.)
+            qrImageUrl = `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.app/qr?data=${encodeURIComponent(qr)}`;
+        }
+        
         console.log(`\nOu acesse este link para a imagem do QR Code: ${qrImageUrl}`);
         console.log(`(Copie o link e abra no navegador para escanear ou baixar a imagem)`);
     }
@@ -173,7 +182,8 @@ async function connectToWhatsApp() {
                 break;
             }
             case 'id_relatorio_list': {
-                const webUrlRelatorio = `https://${process.env.RAILWAY_STATIC_URL || process.env.RAILWAY_PUBLIC_DOMAIN || process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.app`;
+                const BASE_RAILWAY_URL = process.env.RAILWAY_PUBLIC_DOMAIN || process.env.RAILWAY_STATIC_URL;
+                const webUrlRelatorio = BASE_RAILWAY_URL ? `https://${BASE_RAILWAY_URL}` : `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.app`;
                 await botSocket.sendMessage(sender, {
                     text: `📊 *Acesse seu relatório completo*\n\nPara ver gráficos e estatísticas detalhadas, digite: */codigo*\n\nOu acesse diretamente: ${webUrlRelatorio}`,
                 });
@@ -210,7 +220,8 @@ async function connectToWhatsApp() {
 
     if (text.includes("/codigo") || text.includes("/acesso") || text.includes("/web")) {
       const accessCode = generateAccessCode(sender);
-      const webUrl = `https://${process.env.RAILWAY_STATIC_URL || process.env.RAILWAY_PUBLIC_DOMAIN || process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.app`;
+      const BASE_RAILWAY_URL = process.env.RAILWAY_PUBLIC_DOMAIN || process.env.RAILWAY_STATIC_URL;
+      const webUrl = BASE_RAILWAY_URL ? `https://${BASE_RAILWAY_URL}` : `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.app`;
       await botSocket.sendMessage(sender, {
         text: `🔐 *Código de Acesso ao Sistema Web*\n\nSeu código: *${accessCode}*\n\nAcesse: ${webUrl}\n\n⏰ Este código expira em 10 minutos.`,
       });
@@ -218,7 +229,8 @@ async function connectToWhatsApp() {
     }
 
     if (text.includes("/relatorio") || text.includes("/resumo")) {
-      const webUrlRelatorio = `https://${process.env.RAILWAY_STATIC_URL || process.env.RAILWAY_PUBLIC_DOMAIN || process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.app`;
+      const BASE_RAILWAY_URL = process.env.RAILWAY_PUBLIC_DOMAIN || process.env.RAILWAY_STATIC_URL;
+      const webUrlRelatorio = BASE_RAILWAY_URL ? `https://${BASE_RAILWAY_URL}` : `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.app`;
       await botSocket.sendMessage(sender, {
         text: `📊 *Acesse seu relatório completo*\n\nPara ver gráficos e estatísticas detalhadas, digite: */codigo*\n\nOu acesse diretamente: ${webUrlRelatorio}`,
       });
@@ -313,16 +325,11 @@ async function connectToWhatsApp() {
   });
 }
 
-// O Express app está sendo iniciado no index.js principal.
-// O web-server.js apenas exporta a instância do app.
-const webApp = require('./web-server'); // Importa a instância do app Express
+const webApp = require('./web-server'); 
 
-// Define a porta onde o servidor web irá escutar
 const PORT = process.env.PORT || 3000; 
 
-// Rotas do servidor web
 webApp.get("/", (req, res) => res.send("🤖 PoquidaGrana rodando"));
 webApp.listen(PORT, () => console.log(`🌐 Servidor web rodando na porta ${PORT}`));
 
-// Inicia o bot
 connectToWhatsApp();
